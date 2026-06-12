@@ -248,6 +248,10 @@
             <p id="poi-count" class="text-dawn/50 text-sm"></p>
           </div>
         </div>
+
+        <!-- POI list -->
+        <div id="poi-list" class="mt-3 space-y-2 max-h-48 overflow-y-auto story-scroll"></div>
+
         <button id="start-driving-btn" type="button"
           class="w-full mt-4 py-3.5 rounded-xl font-semibold text-sm tracking-wide text-asphalt
                  bg-gradient-to-r from-amber to-amber-light btn-press
@@ -922,6 +926,13 @@
 
       dropPOIPins();
 
+      // Fit map to show all POIs + route
+      const bounds = new google.maps.LatLngBounds();
+      bounds.extend({ lat: state.origin.lat, lng: state.origin.lng });
+      bounds.extend({ lat: state.destination.lat, lng: state.destination.lng });
+      state.pois.forEach(poi => bounds.extend({ lat: poi.lat, lng: poi.lng }));
+      map.fitBounds(bounds, { top: 80, bottom: 280, left: 40, right: 40 });
+
       const mode = MODES[state.exploreMode];
       document.getElementById('route-info-section').classList.add('hidden');
       document.getElementById('driving-ready-section').classList.remove('hidden');
@@ -931,6 +942,33 @@
       document.getElementById('mode-badge').style.background = mode.bg;
       document.getElementById('mode-label').textContent = mode.label + ' Mode';
       document.getElementById('poi-count').textContent = `${state.pois.length} places along your route`;
+
+      // Build POI list below the button
+      const listEl = document.getElementById('poi-list');
+      listEl.innerHTML = '';
+      state.pois.forEach((poi, i) => {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = `w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left btn-press
+                          bg-asphalt/40 hover:bg-asphalt/70
+                          focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber/50
+                          active:bg-asphalt/80`;
+        const photoHtml = poi.photo_url
+          ? `<img src="${poi.photo_url}" alt="" class="w-10 h-10 rounded-lg object-cover shrink-0">`
+          : `<div class="w-10 h-10 rounded-lg flex items-center justify-center text-lg shrink-0" style="background:${mode.bg}">${mode.icon}</div>`;
+        item.innerHTML = `
+          ${photoHtml}
+          <div class="flex-1 min-w-0">
+            <p class="text-dawn text-sm font-medium truncate">${poi.name}</p>
+            <p class="text-dawn/40 text-xs">${poi.rating.toFixed(1)} ★ · ${poi.reviews >= 1000 ? (poi.reviews/1000).toFixed(1)+'k' : poi.reviews} reviews</p>
+          </div>`;
+        item.addEventListener('click', () => {
+          map.panTo({ lat: poi.lat, lng: poi.lng });
+          map.setZoom(14);
+          showPOICard(poi, null, null);
+        });
+        listEl.appendChild(item);
+      });
     }
 
 
@@ -952,7 +990,11 @@
         onPositionUpdate,
         (err) => {
           if (err.code === err.PERMISSION_DENIED) {
-            showError('Location access is needed for Explore Mode. Please enable it in your browser settings.');
+            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+            const msg = isSafari
+              ? 'Location blocked. In Safari: go to Safari → Settings → Websites → Location → find localhost and set to "Allow", then refresh.'
+              : 'Location access is needed for Explore Mode. Please enable it in your browser settings.';
+            showError(msg);
             stopDriving();
           }
         },
@@ -1228,6 +1270,12 @@
     });
 
 
+    // Google auth failure diagnostic
+    window.gm_authFailure = function() {
+      console.error('Google Maps auth failure. Check: 1) Billing enabled on project 2) Maps JavaScript API enabled 3) Key restrictions');
+      document.title = 'MAPS AUTH FAILED — check console';
+    };
+
     // ─── Load Google Maps API ──────────────────────────────────────
     (function loadGoogleMaps() {
       if (CONFIG.GOOGLE_MAPS_KEY === 'YOUR_GOOGLE_MAPS_API_KEY') {
@@ -1235,7 +1283,7 @@
         return;
       }
       const s = document.createElement('script');
-      s.src = `https://maps.googleapis.com/maps/api/js?key=${CONFIG.GOOGLE_MAPS_KEY}&libraries=places,geometry&callback=initApp`;
+      s.src = `https://maps.googleapis.com/maps/api/js?key=${CONFIG.GOOGLE_MAPS_KEY}&libraries=places,geometry&callback=initApp&v=weekly`;
       s.async = true;
       s.defer = true;
       s.onerror = () => showError('Failed to load Google Maps. Check your API key.');
