@@ -495,6 +495,7 @@
     }
 
     function getHookLine(poi) {
+      if (poi.editorial_summary) return poi.editorial_summary;
       const t = poi.types || [];
       if (t.includes('museum'))            return 'Local history museum';
       if (t.includes('church'))            return 'Historic church';
@@ -856,6 +857,21 @@
         }
         if (kept.length >= 10) break;
       }
+
+      // Fetch editorial summaries from Place Details
+      await Promise.all(kept.map(poi =>
+        new Promise(resolve => {
+          placesService.getDetails(
+            { placeId: poi.place_id, fields: ['editorial_summary'] },
+            (place, status) => {
+              if (status === google.maps.places.PlacesServiceStatus.OK && place?.editorial_summary?.text) {
+                poi.editorial_summary = place.editorial_summary.text;
+              }
+              resolve();
+            }
+          );
+        })
+      ));
 
       return kept;
     }
