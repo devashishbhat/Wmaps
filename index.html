@@ -264,13 +264,30 @@
 
       <!-- Active driving state -->
       <div id="driving-active-section" class="hidden">
+        <!-- Next turn instruction bar -->
+        <div id="nav-instruction" class="flex items-center gap-3 mb-3 px-3 py-3 rounded-xl bg-asphalt/70 border border-white/5">
+          <div id="nav-icon" class="w-10 h-10 rounded-lg bg-[#4285F4]/20 flex items-center justify-center text-[#4285F4] shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18"/>
+            </svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p id="nav-step-text" class="text-dawn text-sm font-medium truncate">Calculating route…</p>
+            <p id="nav-step-dist" class="text-dawn/40 text-xs mt-0.5"></p>
+          </div>
+        </div>
+
+        <!-- Driving status row -->
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
             <div class="relative">
               <div class="w-3 h-3 rounded-full bg-sage"></div>
               <div class="absolute inset-0 w-3 h-3 rounded-full bg-sage" style="animation: pulse 2s ease infinite;"></div>
             </div>
-            <p class="text-dawn/80 text-sm font-medium">Explore Mode Active</p>
+            <div>
+              <p id="driving-eta" class="text-dawn/80 text-sm font-medium">Explore Mode Active</p>
+              <p id="driving-remaining" class="text-dawn/40 text-xs"></p>
+            </div>
           </div>
           <button id="stop-driving-btn" type="button"
             class="px-5 py-2 rounded-lg text-sm font-medium text-dawn/70 bg-asphalt border border-white/10
@@ -280,6 +297,21 @@
             Stop
           </button>
         </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ===================== DRIVING MODE TRANSITION ===================== -->
+  <div id="drive-transition" class="hidden fixed inset-0 z-50 flex flex-col items-center justify-center bg-asphalt">
+    <div id="drive-transition-content" class="text-center" style="opacity:0; transform: scale(0.9);">
+      <div id="drive-mode-icon" class="text-6xl mb-4"></div>
+      <h2 id="drive-mode-title" class="font-display text-3xl text-dawn mb-2" style="letter-spacing:-0.02em;"></h2>
+      <p class="text-dawn/50 text-sm">Explore Mode starting…</p>
+      <div class="mt-6 flex items-center justify-center gap-2">
+        <div class="w-2 h-2 rounded-full bg-amber" style="animation: pulse 1.5s ease infinite;"></div>
+        <div class="w-2 h-2 rounded-full bg-amber" style="animation: pulse 1.5s ease 0.3s infinite;"></div>
+        <div class="w-2 h-2 rounded-full bg-amber" style="animation: pulse 1.5s ease 0.6s infinite;"></div>
       </div>
     </div>
   </div>
@@ -415,13 +447,17 @@
       watchId:             null,
       cardDismissTimer:    null,
       userMarker:          null,
+      userGlow:            null,
       poiMarkers:          [],
       originMarker:        null,
       destMarker:          null,
+      routeSteps:          [],
+      routeOutline:        null,
     };
 
     let map, directionsService, directionsRenderer, placesService;
     let originAutocomplete, destAutocomplete;
+    let routePolyline = null;
 
     // ─── Mode Definitions ──────────────────────────────────────────
     const MODES = {
@@ -626,7 +662,7 @@
         directionsService  = new google.maps.DirectionsService();
         directionsRenderer = new google.maps.DirectionsRenderer({
           map,
-          polylineOptions: { strokeColor: '#f5a623', strokeOpacity: 0.85, strokeWeight: 5 },
+          suppressPolylines: true,
           suppressMarkers: true,
         });
         placesService = new google.maps.places.PlacesService(map);
@@ -645,6 +681,38 @@
 
         state.route = result;
         directionsRenderer.setDirections(result);
+
+        // Build full detailed path from every step (not the simplified overview_path)
+        const fullPath = [];
+        result.routes[0].legs.forEach(leg => {
+          leg.steps.forEach(step => {
+            step.path.forEach(pt => fullPath.push(pt));
+          });
+        });
+
+        // Draw route polyline manually — outline + fill for max visibility
+        if (routePolyline) routePolyline.setMap(null);
+        if (state.routeOutline) state.routeOutline.setMap(null);
+
+        // Dark outline underneath
+        state.routeOutline = new google.maps.Polyline({
+          path: fullPath,
+          strokeColor: '#1a237e',
+          strokeOpacity: 0.5,
+          strokeWeight: 10,
+          zIndex: 2,
+          map,
+        });
+
+        // Blue fill on top
+        routePolyline = new google.maps.Polyline({
+          path: fullPath,
+          strokeColor: '#4285F4',
+          strokeOpacity: 1.0,
+          strokeWeight: 6,
+          zIndex: 3,
+          map,
+        });
 
         // Origin marker
         state.originMarker = new google.maps.Marker({
@@ -972,13 +1040,110 @@
     }
 
 
+    // ─── Route Steps for Turn-by-Turn ────────────────────────────
+
+    function buildRouteSteps() {
+      if (!state.route) return [];
+      const steps = [];
+      state.route.routes[0].legs.forEach(leg => {
+        leg.steps.forEach(step => {
+          steps.push({
+            instruction: step.instructions || '',
+            distance: step.distance.text,
+            distanceValue: step.distance.value,
+            duration: step.duration.text,
+            startLat: step.start_location.lat(),
+            startLng: step.start_location.lng(),
+            endLat: step.end_location.lat(),
+            endLng: step.end_location.lng(),
+            maneuver: step.maneuver || '',
+          });
+        });
+      });
+      return steps;
+    }
+
+    function getManeuverIcon(maneuver) {
+      if (maneuver.includes('left'))  return '<path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>';
+      if (maneuver.includes('right')) return '<path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3"/>';
+      if (maneuver.includes('uturn')) return '<path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3"/>';
+      if (maneuver.includes('merge') || maneuver.includes('ramp')) return '<path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/>';
+      return '<path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18"/>';
+    }
+
+    function findCurrentStep(lat, lng) {
+      if (!state.routeSteps || state.routeSteps.length === 0) return null;
+      let closestIdx = 0;
+      let closestDist = Infinity;
+      state.routeSteps.forEach((step, i) => {
+        const d = haversineDistance(lat, lng, step.startLat, step.startLng);
+        if (d < closestDist) { closestDist = d; closestIdx = i; }
+      });
+      // If we're past the closest step's end, move to next
+      const endDist = haversineDistance(lat, lng, state.routeSteps[closestIdx].endLat, state.routeSteps[closestIdx].endLng);
+      if (endDist < 50 && closestIdx < state.routeSteps.length - 1) closestIdx++;
+      return closestIdx;
+    }
+
+    function updateNavInstruction(lat, lng) {
+      const idx = findCurrentStep(lat, lng);
+      if (idx === null) return;
+      const step = state.routeSteps[idx];
+
+      const iconSvg = getManeuverIcon(step.maneuver);
+      document.getElementById('nav-icon').innerHTML =
+        `<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">${iconSvg}</svg>`;
+
+      const cleanText = step.instruction.replace(/<[^>]*>/g, '');
+      document.getElementById('nav-step-text').textContent = cleanText || 'Continue on route';
+
+      const distToStep = haversineDistance(lat, lng, step.endLat, step.endLng);
+      document.getElementById('nav-step-dist').textContent =
+        distToStep > 1000 ? `${(distToStep/1609).toFixed(1)} mi` : `${Math.round(distToStep)} m`;
+
+      // Update ETA
+      const leg = state.route.routes[0].legs[0];
+      document.getElementById('driving-eta').textContent = `ETA: ${leg.duration.text}`;
+      document.getElementById('driving-remaining').textContent = `${leg.distance.text} remaining`;
+    }
+
+
     // ─── Driving Mode ──────────────────────────────────────────────
 
-    function startDriving() {
+    async function startDriving() {
       if (!navigator.geolocation) {
         showError('Geolocation is not supported by your browser.');
         return;
       }
+
+      // Cinematic transition
+      const mode = MODES[state.exploreMode];
+      const transition = document.getElementById('drive-transition');
+      const content = document.getElementById('drive-transition-content');
+      document.getElementById('drive-mode-icon').textContent = mode.icon;
+      document.getElementById('drive-mode-title').textContent = mode.label + ' Mode';
+
+      transition.classList.remove('hidden');
+      await sleep(50);
+      content.style.transition = 'opacity 0.6s ease, transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)';
+      content.style.opacity = '1';
+      content.style.transform = 'scale(1)';
+
+      // Announce mode start
+      speakText(`${mode.label} mode activated. ${state.pois.length} places along your route. Let's go.`);
+
+      await sleep(2200);
+
+      // Fade out transition
+      content.style.opacity = '0';
+      content.style.transform = 'scale(1.1)';
+      await sleep(500);
+      transition.classList.add('hidden');
+      content.style.opacity = '0';
+      content.style.transform = 'scale(0.9)';
+
+      // Build turn-by-turn steps
+      state.routeSteps = buildRouteSteps();
 
       state.driving = true;
       state.lastAnnouncementTime = 0;
@@ -986,19 +1151,37 @@
       document.getElementById('driving-ready-section').classList.add('hidden');
       document.getElementById('driving-active-section').classList.remove('hidden');
 
+      // Set initial nav instruction
+      const leg = state.route.routes[0].legs[0];
+      if (state.routeSteps.length > 0) {
+        const first = state.routeSteps[0];
+        document.getElementById('nav-step-text').textContent = first.instruction.replace(/<[^>]*>/g, '') || 'Head to route';
+        document.getElementById('nav-step-dist').textContent = first.distance;
+      }
+      document.getElementById('driving-eta').textContent = `ETA: ${leg.duration.text}`;
+      document.getElementById('driving-remaining').textContent = `${leg.distance.text} remaining`;
+
       state.watchId = navigator.geolocation.watchPosition(
         onPositionUpdate,
         (err) => {
-          if (err.code === err.PERMISSION_DENIED) {
-            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-            const msg = isSafari
-              ? 'Location blocked. In Safari: go to Safari → Settings → Websites → Location → find localhost and set to "Allow", then refresh.'
-              : 'Location access is needed for Explore Mode. Please enable it in your browser settings.';
-            showError(msg);
-            stopDriving();
+          const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+          let msg;
+          if (err.code === 1) {
+            msg = isSafari
+              ? 'Location blocked. Check both: 1) Safari → Settings → Websites → Location → Allow for localhost. 2) System Settings → Privacy & Security → Location Services → Safari must be enabled. Then refresh.'
+              : 'Location access denied. Please allow location in your browser settings and refresh.';
+          } else if (err.code === 2) {
+            msg = 'Could not determine your location. Make sure Location Services is enabled in System Settings → Privacy & Security → Location Services.';
+          } else if (err.code === 3) {
+            msg = 'Location request timed out. Trying again…';
+          } else {
+            msg = `Location error (code ${err.code}): ${err.message}`;
           }
+          console.error('Geolocation error:', err.code, err.message);
+          showError(msg);
+          if (err.code !== 3) stopDriving();
         },
-        { enableHighAccuracy: true, maximumAge: 1000 }
+        { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 }
       );
     }
 
@@ -1012,8 +1195,19 @@
         state.userMarker.setMap(null);
         state.userMarker = null;
       }
+      if (state.userGlow) {
+        state.userGlow.setMap(null);
+        state.userGlow = null;
+      }
       window.speechSynthesis.cancel();
       dismissCard();
+
+      // Reset map to top-down overview
+      const bounds = new google.maps.LatLngBounds();
+      bounds.extend({ lat: state.origin.lat, lng: state.origin.lng });
+      bounds.extend({ lat: state.destination.lat, lng: state.destination.lng });
+      state.pois.forEach(poi => bounds.extend({ lat: poi.lat, lng: poi.lng }));
+      map.fitBounds(bounds, { top: 80, bottom: 280, left: 40, right: 40 });
 
       document.getElementById('driving-active-section').classList.add('hidden');
       document.getElementById('driving-ready-section').classList.remove('hidden');
@@ -1023,24 +1217,60 @@
       const lat     = position.coords.latitude;
       const lng     = position.coords.longitude;
       const heading = position.coords.heading;
+      const speed   = position.coords.speed;
 
-      // Update or create user marker
+      const arrowPath = 'M 0,-12 L 7,8 L 0,3 L -7,8 Z';
+
       if (!state.userMarker) {
-        state.userMarker = new google.maps.Marker({
+        // Blue glow circle behind the arrow
+        state.userGlow = new google.maps.Marker({
           position: { lat, lng },
           map,
           icon: {
             path: google.maps.SymbolPath.CIRCLE,
+            fillColor: '#4285F4', fillOpacity: 0.2,
+            strokeColor: '#4285F4', strokeWeight: 1, strokeOpacity: 0.3,
+            scale: 20,
+          },
+          zIndex: 99,
+        });
+
+        state.userMarker = new google.maps.Marker({
+          position: { lat, lng },
+          map,
+          icon: {
+            path: arrowPath,
             fillColor: '#4285F4', fillOpacity: 1,
-            strokeColor: '#ffffff', strokeWeight: 3, scale: 8,
+            strokeColor: '#ffffff', strokeWeight: 2,
+            scale: 1.8,
+            rotation: heading || 0,
+            anchor: new google.maps.Point(0, 0),
           },
           zIndex: 100,
         });
+
+        map.setZoom(16);
       } else {
         state.userMarker.setPosition({ lat, lng });
+        if (state.userGlow) state.userGlow.setPosition({ lat, lng });
+
+        const icon = state.userMarker.getIcon();
+        icon.rotation = heading || icon.rotation || 0;
+        state.userMarker.setIcon(icon);
       }
 
       map.panTo({ lat, lng });
+
+      // Adaptive zoom based on speed
+      if (speed != null && speed > 0) {
+        const targetZoom = speed > 30 ? 14 : speed > 15 ? 15 : 16;
+        if (Math.abs(map.getZoom() - targetZoom) > 0.5) {
+          map.setZoom(targetZoom);
+        }
+      }
+
+      // Update turn-by-turn navigation
+      updateNavInstruction(lat, lng);
 
       checkPOIProximity(lat, lng, heading);
     }
@@ -1245,6 +1475,8 @@
         clearPOIMarkers();
         if (state.originMarker) { state.originMarker.setMap(null); state.originMarker = null; }
         if (state.destMarker)   { state.destMarker.setMap(null);   state.destMarker = null; }
+        if (routePolyline)      { routePolyline.setMap(null); routePolyline = null; }
+        if (state.routeOutline) { state.routeOutline.setMap(null); state.routeOutline = null; }
         state.route = null;
         state.pois = [];
         state.exploreMode = null;
