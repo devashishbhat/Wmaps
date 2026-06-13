@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wmaps — Pitch Deck</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/black.css">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --asphalt: #1a1a2e;
+      --amber: #f5a623;
+      --dawn: #e8e0d5;
+      --sage: #7a9e7e;
+      --crimson: #c2185b;
+      --electric: #26c6da;
+    }
+
+    .reveal {
+      font-family: 'Inter', system-ui, sans-serif;
+      color: var(--dawn);
+    }
+    .reveal .slides { text-align: left; }
+    .reveal .slides section { background: var(--asphalt); }
+
+    .reveal h1, .reveal h2, .reveal h3 {
+      font-family: 'DM Serif Display', Georgia, serif;
+      color: var(--amber);
+      text-transform: none;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+    .reveal h1 { font-size: 3.2em; }
+    .reveal h2 { font-size: 2em; }
+    .reveal h3 { font-size: 1.4em; color: var(--dawn); }
+
+    .reveal p, .reveal li {
+      color: rgba(232,224,213,0.8);
+      font-size: 0.65em;
+      line-height: 1.7;
+    }
+    .reveal li { margin-bottom: 0.5em; }
+
+    .reveal .subtitle {
+      color: rgba(232,224,213,0.5);
+      font-size: 0.55em;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    .reveal .highlight { color: var(--amber); font-weight: 600; }
+    .reveal .sage { color: var(--sage); }
+    .reveal .crimson { color: var(--crimson); }
+    .reveal .electric { color: var(--electric); }
+
+    .reveal .big-stat {
+      font-family: 'DM Serif Display', serif;
+      font-size: 3em;
+      color: var(--amber);
+      line-height: 1;
+    }
+    .reveal .stat-label {
+      font-size: 0.5em;
+      color: rgba(232,224,213,0.5);
+      margin-top: 0.3em;
+    }
+
+    .reveal .tech-pill {
+      display: inline-block;
+      padding: 0.3em 0.8em;
+      margin: 0.2em;
+      border-radius: 999px;
+      font-size: 0.55em;
+      font-weight: 600;
+      background: rgba(245,166,35,0.12);
+      color: var(--amber);
+      border: 1px solid rgba(245,166,35,0.2);
+    }
+    .reveal .tech-pill.green {
+      background: rgba(122,158,126,0.12);
+      color: var(--sage);
+      border-color: rgba(122,158,126,0.2);
+    }
+    .reveal .tech-pill.blue {
+      background: rgba(38,198,218,0.12);
+      color: var(--electric);
+      border-color: rgba(38,198,218,0.2);
+    }
+    .reveal .tech-pill.pink {
+      background: rgba(194,24,91,0.12);
+      color: var(--crimson);
+      border-color: rgba(194,24,91,0.2);
+    }
+
+    .reveal .flow-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 1em;
+      margin-bottom: 1em;
+      font-size: 0.6em;
+    }
+    .reveal .flow-num {
+      width: 2em;
+      height: 2em;
+      border-radius: 50%;
+      background: rgba(245,166,35,0.15);
+      color: var(--amber);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      flex-shrink: 0;
+      font-size: 0.9em;
+    }
+    .reveal .flow-text strong { color: var(--dawn); }
+
+    .reveal .mode-row {
+      display: flex;
+      align-items: center;
+      gap: 0.8em;
+      padding: 0.5em 0;
+      font-size: 0.6em;
+    }
+    .reveal .mode-icon {
+      font-size: 1.5em;
+      width: 1.8em;
+      height: 1.8em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 0.4em;
+    }
+
+    .reveal .arch-box {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 1em;
+      margin: 0.5em 0;
+      font-size: 0.55em;
+    }
+    .reveal .arch-box h4 {
+      font-family: 'DM Serif Display', serif;
+      color: var(--amber);
+      font-size: 1.1em;
+      margin: 0 0 0.3em 0;
+    }
+
+    .reveal .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5em;
+    }
+
+    .reveal .center-text { text-align: center; }
+
+    .reveal .divider {
+      width: 60px;
+      height: 3px;
+      background: var(--amber);
+      border-radius: 2px;
+      margin: 0.8em 0;
+    }
+
+    .reveal .quote {
+      font-style: italic;
+      font-size: 0.75em;
+      color: rgba(232,224,213,0.7);
+      border-left: 3px solid var(--amber);
+      padding-left: 1em;
+      margin: 1em 0;
+    }
+
+    /* Background grain */
+    .reveal .slides section::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.03;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    .reveal .progress { color: var(--amber); height: 4px; }
+    .reveal .controls button { color: var(--amber) !important; }
+  </style>
+</head>
+<body>
+  <div class="reveal">
+    <div class="slides">
+
+      <!-- ===== SLIDE 1: TITLE ===== -->
+      <section class="center-text">
+        <div style="margin-bottom: 0.5em;">
+          <span class="subtitle">Introducing</span>
+        </div>
+        <h1 style="margin: 0;">Wmaps</h1>
+        <p style="font-size: 0.8em; color: rgba(232,224,213,0.6); margin-top: 0.3em;">
+          Route Explorer
+        </p>
+        <div class="divider" style="margin: 1em auto;"></div>
+        <p style="font-size: 0.6em; color: rgba(232,224,213,0.5);">
+          A driving companion that discovers hidden stories along your route
+        </p>
+      </section>
+
+
+      <!-- ===== SLIDE 2: THE PROBLEM ===== -->
+      <section>
+        <h2>The Problem</h2>
+        <div class="divider"></div>
+        <div class="quote">
+          "You drive past a thousand interesting places every year and never know they're there."
+        </div>
+        <ul>
+          <li>Navigation apps get you from <span class="highlight">A to B</span> — but ignore everything in between</li>
+          <li>Guidebooks focus on destinations, not the <span class="highlight">journey</span></li>
+          <li>The best stories are <span class="highlight">300 metres off the highway</span>, unmarked and unknown</li>
+          <li>Researching a road trip route takes <span class="highlight">hours of Googling</span></li>
+        </ul>
+      </section>
+
+
+      <!-- ===== SLIDE 3: THE SOLUTION ===== -->
+      <section>
+        <h2>The Solution</h2>
+        <div class="divider"></div>
+        <p style="font-size: 0.75em; color: var(--dawn);">
+          Wmaps layers a <span class="highlight">discovery experience</span> on top of any driving route.
+        </p>
+        <br>
+        <p>Like having a knowledgeable passenger who says:</p>
+        <div class="quote" style="font-size: 0.7em;">
+          "Hey, in 200 metres on your left — there's a lighthouse built by Portuguese sailors in 1823 who never made it home."
+        </div>
+        <p>Then shuts up until the next interesting thing.</p>
+        <br>
+        <p><span class="highlight">Hands-free.</span> <span class="sage">Voice-first.</span> <span class="electric">Zero distraction.</span></p>
+      </section>
+
+
+      <!-- ===== SLIDE 4: HOW IT WORKS ===== -->
+      <section>
+        <h2>How It Works</h2>
+        <div class="divider"></div>
+        <div class="flow-step">
+          <div class="flow-num">1</div>
+          <div class="flow-text"><strong>Enter your route</strong> — origin and destination with Google Maps autocomplete</div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">2</div>
+          <div class="flow-text"><strong>Pick an explore mode</strong> — History, Dark & Weird, Pop Culture, Nature, or Roadside Americana</div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">3</div>
+          <div class="flow-text"><strong>AI discovers hidden gems</strong> — scans 5km radius along your route, finds unique places, and generates story hooks</div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">4</div>
+          <div class="flow-text"><strong>Start driving</strong> — as you approach a place, it announces it hands-free with voice + a cinematic card</div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num">5</div>
+          <div class="flow-text"><strong>"Tell me more"</strong> — one tap for a 3-sentence story narrated by AI in the mode's tone</div>
+        </div>
+      </section>
+
+
+      <!-- ===== SLIDE 5: EXPLORE MODES ===== -->
+      <section>
+        <h2>5 Explore Modes</h2>
+        <div class="divider"></div>
+        <div class="mode-row">
+          <div class="mode-icon" style="background: rgba(245,166,35,0.12);">🏛</div>
+          <div><strong style="color: var(--dawn);">History</strong> — Battlefields, memorials, heritage sites. <em style="color:rgba(232,224,213,0.5);">Tone: Ken Burns documentary</em></div>
+        </div>
+        <div class="mode-row">
+          <div class="mode-icon" style="background: rgba(194,24,91,0.12);">👻</div>
+          <div><strong style="color: var(--dawn);">Dark & Weird</strong> — Haunted places, abandoned sites, mysteries. <em style="color:rgba(232,224,213,0.5);">Tone: Campfire story</em></div>
+        </div>
+        <div class="mode-row">
+          <div class="mode-icon" style="background: rgba(38,198,218,0.12);">🎬</div>
+          <div><strong style="color: var(--dawn);">Pop Culture</strong> — Filming locations, murals, arts districts. <em style="color:rgba(232,224,213,0.5);">Tone: Excited movie fan</em></div>
+        </div>
+        <div class="mode-row">
+          <div class="mode-icon" style="background: rgba(122,158,126,0.12);">🌿</div>
+          <div><strong style="color: var(--dawn);">Nature</strong> — Waterfalls, trails, scenic overlooks, caves. <em style="color:rgba(232,224,213,0.5);">Tone: Nature documentary</em></div>
+        </div>
+        <div class="mode-row">
+          <div class="mode-icon" style="background: rgba(230,81,0,0.12);">🍔</div>
+          <div><strong style="color: var(--dawn);">Roadside Americana</strong> — World's largest things, vintage diners, quirky stops. <em style="color:rgba(232,224,213,0.5);">Tone: Road trip blogger</em></div>
+        </div>
+      </section>
+
+
+      <!-- ===== SLIDE 6: TECH STACK ===== -->
+      <section>
+        <h2>Tech Stack</h2>
+        <div class="divider"></div>
+        <p style="margin-bottom: 0.8em;">Single HTML file. No backend. No build step. Pure frontend.</p>
+
+        <div class="two-col">
+          <div class="arch-box">
+            <h4>Maps & Discovery</h4>
+            <span class="tech-pill">Google Maps JS API</span>
+            <span class="tech-pill">Directions API</span>
+            <span class="tech-pill">Places API</span>
+            <p style="margin-top: 0.5em;">Route drawing, POI discovery via keyword + type search along polyline sample points</p>
+          </div>
+          <div class="arch-box">
+            <h4>AI Layer</h4>
+            <span class="tech-pill pink">Claude claude-sonnet-4-6</span>
+            <span class="tech-pill pink">Anthropic API</span>
+            <p style="margin-top: 0.5em;">Generates story hooks for every POI. "Tell me more" delivers 3-sentence narratives in mode-specific tones</p>
+          </div>
+          <div class="arch-box">
+            <h4>Real-Time Driving</h4>
+            <span class="tech-pill green">Geolocation API</span>
+            <span class="tech-pill green">DeviceOrientation</span>
+            <p style="margin-top: 0.5em;">GPS tracking with heading detection, compass integration, left/right POI positioning</p>
+          </div>
+          <div class="arch-box">
+            <h4>Voice & UI</h4>
+            <span class="tech-pill blue">Web Speech API</span>
+            <span class="tech-pill blue">Tailwind CSS</span>
+            <p style="margin-top: 0.5em;">Hands-free audio announcements, spring animations, cinematic POI cards</p>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ===== SLIDE 7: ARCHITECTURE ===== -->
+      <section>
+        <h2>Under the Hood</h2>
+        <div class="divider"></div>
+
+        <div class="flow-step">
+          <div class="flow-num" style="background: rgba(122,158,126,0.15); color: var(--sage);">📍</div>
+          <div class="flow-text"><strong>Polyline Sampling</strong> — decode route into coordinates, sample every ~15 miles, search 5km radius at each point</div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num" style="background: rgba(38,198,218,0.15); color: var(--electric);">🔍</div>
+          <div class="flow-text"><strong>Smart Filtering</strong> — type + keyword searches, deduplicate by place ID, remove within 500m, score by rating × log(reviews) with hidden gem boost</div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num" style="background: rgba(194,24,91,0.15); color: var(--crimson);">🧠</div>
+          <div class="flow-text"><strong>AI Enrichment</strong> — single Claude API call generates story hooks for all POIs at once: <em>"Where Confederate gold vanished in 1865"</em></div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-num" style="background: rgba(245,166,35,0.15); color: var(--amber);">🔔</div>
+          <div class="flow-text"><strong>Proximity Trigger</strong> — watchPosition fires within 300m, 2-min cooldown, bearing math for left/right detection, auto-skips passed POIs</div>
+        </div>
+      </section>
+
+
+      <!-- ===== SLIDE 8: KEY FEATURES ===== -->
+      <section>
+        <h2>Key Features</h2>
+        <div class="divider"></div>
+        <div class="two-col">
+          <div>
+            <p><span class="highlight">🎯 Turn-by-turn nav</span><br>Real directions with maneuver icons, distance to next turn, ETA</p>
+            <p><span class="highlight">🗣️ Hands-free voice</span><br>Auto-announces places while driving — no screen interaction needed</p>
+            <p><span class="highlight">🎬 Cinematic cards</span><br>Spring-animated POI cards with photos, ratings, and AI-written hooks</p>
+          </div>
+          <div>
+            <p><span class="highlight">🧭 Compass tracking</span><br>Arrow follows your heading via GPS, device compass, or movement</p>
+            <p><span class="highlight">📖 On-demand stories</span><br>"Tell me more" for a 3-sentence AI story in the mode's tone</p>
+            <p><span class="highlight">🔇 Respectful UX</span><br>2-min cooldown, never repeats, auto-dismiss — no spam, no distraction</p>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ===== SLIDE 9: DEMO ===== -->
+      <section class="center-text">
+        <span class="subtitle">Now let's see it in action</span>
+        <h1 style="font-size: 2.5em; margin-top: 0.3em;">Live Demo</h1>
+        <div class="divider" style="margin: 0.8em auto;"></div>
+        <p style="font-size: 0.7em;">
+          <span class="highlight">localhost:3000</span>
+        </p>
+      </section>
+
+
+      <!-- ===== SLIDE 10: WHAT'S NEXT ===== -->
+      <section>
+        <h2>What's Next</h2>
+        <div class="divider"></div>
+        <ul>
+          <li><span class="highlight">Saved routes</span> — bookmark favourite drives and share with friends</li>
+          <li><span class="highlight">Offline mode</span> — pre-cache POIs and stories for areas with no signal</li>
+          <li><span class="highlight">Multiple modes at once</span> — combine History + Nature on one drive</li>
+          <li><span class="highlight">Community stories</span> — let locals add hidden stories about their area</li>
+          <li><span class="highlight">Native mobile app</span> — background audio, lock-screen controls, deeper compass</li>
+        </ul>
+      </section>
+
+
+      <!-- ===== SLIDE 11: CLOSING ===== -->
+      <section class="center-text">
+        <h1 style="font-size: 3em;">Wmaps</h1>
+        <p style="font-size: 0.7em; color: rgba(232,224,213,0.6); margin-top: 0.3em;">
+          Every road has a story. Now you'll hear it.
+        </p>
+        <div class="divider" style="margin: 1.2em auto;"></div>
+        <div style="margin-top: 1em;">
+          <span class="tech-pill">Single HTML file</span>
+          <span class="tech-pill green">No backend</span>
+          <span class="tech-pill blue">Voice-first</span>
+          <span class="tech-pill pink">AI-powered</span>
+        </div>
+        <p style="font-size: 0.5em; color: rgba(232,224,213,0.3); margin-top: 2em;">
+          Built with Google Maps Platform + Claude AI + Web Speech API
+        </p>
+      </section>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+  <script>
+    Reveal.initialize({
+      hash: true,
+      width: 1280,
+      height: 720,
+      margin: 0.08,
+      transition: 'slide',
+      transitionSpeed: 'default',
+      backgroundTransition: 'fade',
+      center: false,
+      controls: true,
+      progress: true,
+      slideNumber: 'c/t',
+    });
+  </script>
+</body>
+</html>

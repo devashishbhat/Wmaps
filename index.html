@@ -461,11 +461,26 @@
 
     // ─── Mode Definitions ──────────────────────────────────────────
     const MODES = {
-      history:   { label: 'History',             icon: '🏛', types: ['museum','church','cemetery','city_hall'],   accent: '#f5a623', bg: 'rgba(245,166,35,0.12)' },
-      dark:      { label: 'Dark & Weird',        icon: '👻', types: ['cemetery','natural_feature'],              accent: '#c2185b', bg: 'rgba(194,24,91,0.12)' },
-      popculture:{ label: 'Pop Culture',         icon: '🎬', types: ['movie_theater','point_of_interest'],       accent: '#26c6da', bg: 'rgba(38,198,218,0.12)' },
-      nature:    { label: 'Nature',              icon: '🌿', types: ['park','natural_feature','campground'],     accent: '#7a9e7e', bg: 'rgba(122,158,126,0.12)' },
-      americana: { label: 'Roadside Americana',  icon: '🍔', types: ['tourist_attraction'],                     accent: '#e65100', bg: 'rgba(230,81,0,0.12)' },
+      history:   { label: 'History',             icon: '🏛',
+        types: ['museum','church','cemetery','city_hall'],
+        keywords: ['historic site', 'battlefield', 'memorial', 'historic landmark', 'heritage'],
+        accent: '#f5a623', bg: 'rgba(245,166,35,0.12)' },
+      dark:      { label: 'Dark & Weird',        icon: '👻',
+        types: ['cemetery','natural_feature'],
+        keywords: ['haunted', 'ghost', 'abandoned', 'mysterious', 'strange'],
+        accent: '#c2185b', bg: 'rgba(194,24,91,0.12)' },
+      popculture:{ label: 'Pop Culture',         icon: '🎬',
+        types: ['movie_theater','point_of_interest'],
+        keywords: ['filming location', 'famous landmark', 'mural', 'arts district'],
+        accent: '#26c6da', bg: 'rgba(38,198,218,0.12)' },
+      nature:    { label: 'Nature',              icon: '🌿',
+        types: ['park','natural_feature','campground'],
+        keywords: ['waterfall', 'scenic overlook', 'trail', 'gorge', 'cave'],
+        accent: '#7a9e7e', bg: 'rgba(122,158,126,0.12)' },
+      americana: { label: 'Roadside Americana',  icon: '🍔',
+        types: ['tourist_attraction'],
+        keywords: ['roadside attraction', 'world largest', 'quirky', 'vintage', 'diner'],
+        accent: '#e65100', bg: 'rgba(230,81,0,0.12)' },
     };
 
     const MODE_TONES = {
@@ -531,6 +546,10 @@
     }
 
     function getHookLine(poi) {
+      // Use Claude-enriched hook if available
+      if (poi.hookLine) return poi.hookLine;
+
+      // Fallback to type-based generic hook
       const t = poi.types || [];
       if (t.includes('museum'))            return 'Local history museum';
       if (t.includes('church'))            return 'Historic church';
@@ -866,13 +885,27 @@
 
       let allResults = [];
 
+      // Search by place types
       for (const point of samples) {
         for (const placeType of mode.types) {
           try {
             const results = await nearbySearchPromise({
               location: point,
-              radius: 3000,
+              radius: 5000,
               type: placeType,
+            });
+            allResults.push(...results);
+          } catch { /* swallow */ }
+          await sleep(200);
+        }
+
+        // Also search by keywords to find hidden gems
+        for (const kw of (mode.keywords || [])) {
+          try {
+            const results = await nearbySearchPromise({
+              location: point,
+              radius: 5000,
+              keyword: kw,
             });
             allResults.push(...results);
           } catch { /* swallow */ }
@@ -880,9 +913,9 @@
         }
       }
 
-      // Filter: rating >= 4.2 and reviews >= 50
+      // Lower thresholds to catch hidden gems (rating >= 3.8, reviews >= 15)
       allResults = allResults.filter(p =>
-        p.rating >= 4.2 && (p.user_ratings_total || 0) >= 50
+        (p.rating || 0) >= 3.8 && (p.user_ratings_total || 0) >= 15
       );
 
       // Deduplicate by place_id
@@ -893,9 +926,12 @@
         return true;
       });
 
-      // Score: rating * log(reviews)
+      // Score: rating * log(reviews) — but boost lesser-known spots slightly
       allResults.forEach(p => {
-        p._score = p.rating * Math.log(p.user_ratings_total || 1);
+        const reviews = p.user_ratings_total || 1;
+        p._score = p.rating * Math.log(reviews);
+        // Bonus for places with fewer reviews (hidden gems)
+        if (reviews < 200 && p.rating >= 4.0) p._score *= 1.3;
       });
       allResults.sort((a, b) => b._score - a._score);
 
@@ -920,12 +956,73 @@
             types:       p.types || [],
             announced:   false,
             storyCache:  null,
+            hookLine:    null, // will be enriched by Claude
           });
         }
         if (kept.length >= 10) break;
       }
 
+      // Enrich POIs with interesting hook lines via Claude
+      if (kept.length > 0) {
+        await enrichPOIHooks(kept);
+      }
+
       return kept;
+    }
+
+    async function enrichPOIHooks(pois) {
+      const modeKey = state.exploreMode;
+      const placeList = pois.map((p, i) =>
+        `${i+1}. "${p.name}" near ${p.vicinity} (types: ${p.types.slice(0,3).join(', ')})`
+      ).join('\n');
+
+      const prompt = `You are a travel researcher who finds hidden stories. For each place below, write ONE short sentence (max 15 words) revealing something surprising, specific, or lesser-known about it.
+
+Rules:
+- Use real facts: a year, a person's name, a specific event, a film title, a battle
+- If you don't know a specific fact, invent a compelling plausible hook based on the place type and region
+- Never use "fascinating", "interesting", "notable", "hidden gem", or "must-see"
+- Be specific and vivid, like: "Where Confederate gold vanished in 1865" or "Filming location for Dirty Dancing's lake scene"
+- Mode: ${MODES[modeKey].label}
+
+Places:
+${placeList}
+
+Reply with ONLY a JSON array of strings, one hook per place, same order. Example: ["Hook for place 1", "Hook for place 2"]`;
+
+      try {
+        const resp = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': CONFIG.ANTHROPIC_API_KEY,
+            'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true',
+          },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-6',
+            max_tokens: 1000,
+            messages: [{ role: 'user', content: prompt }],
+          }),
+        });
+
+        if (!resp.ok) throw new Error('API error');
+
+        const data = await resp.json();
+        const text = data.content?.[0]?.text || '';
+
+        // Parse JSON array from response
+        const match = text.match(/\[[\s\S]*\]/);
+        if (match) {
+          const hooks = JSON.parse(match[0]);
+          pois.forEach((poi, i) => {
+            if (hooks[i]) poi.hookLine = hooks[i];
+          });
+        }
+      } catch (err) {
+        console.warn('Could not enrich POI hooks:', err);
+        // Fall back to generic hooks — no big deal
+      }
     }
 
 
@@ -974,7 +1071,7 @@
       hideModeSelector();
 
       await sleep(400);
-      showLoading('Finding hidden gems along your route…');
+      showLoading('Searching for hidden gems along your route…');
 
       try {
         state.pois = await loadPOIs();
@@ -1108,6 +1205,82 @@
     }
 
 
+    // ─── Compass / Heading Tracking ────────────────────────────────
+
+    let compassHeading = null;
+    let lastPositions = []; // for calculating heading from movement
+
+    function startCompass() {
+      // Try DeviceOrientation for compass heading (works on phones)
+      if (typeof DeviceOrientationEvent !== 'undefined') {
+        // iOS 13+ requires permission
+        if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+          DeviceOrientationEvent.requestPermission().then(permission => {
+            if (permission === 'granted') {
+              window.addEventListener('deviceorientation', onDeviceOrientation);
+            }
+          }).catch(() => {});
+        } else {
+          window.addEventListener('deviceorientation', onDeviceOrientation);
+        }
+      }
+    }
+
+    function stopCompass() {
+      window.removeEventListener('deviceorientation', onDeviceOrientation);
+      compassHeading = null;
+      lastPositions = [];
+    }
+
+    function onDeviceOrientation(e) {
+      // Safari: webkitCompassHeading (0 = north, clockwise)
+      if (e.webkitCompassHeading != null) {
+        compassHeading = e.webkitCompassHeading;
+      }
+      // Chrome/Android: alpha (needs adjusting)
+      else if (e.alpha != null && e.absolute) {
+        compassHeading = (360 - e.alpha) % 360;
+      }
+
+      updateArrowRotation();
+    }
+
+    function calcHeadingFromMovement(lat, lng) {
+      const now = Date.now();
+      lastPositions.push({ lat, lng, time: now });
+      // Keep last 5 positions within 10 seconds
+      lastPositions = lastPositions.filter(p => now - p.time < 10000).slice(-5);
+
+      if (lastPositions.length < 2) return null;
+      const oldest = lastPositions[0];
+      const dist = haversineDistance(oldest.lat, oldest.lng, lat, lng);
+      if (dist < 3) return null; // not enough movement
+
+      const toRad = d => d * Math.PI / 180;
+      const dLon = toRad(lng - oldest.lng);
+      const lat1 = toRad(oldest.lat), lat2 = toRad(lat);
+      const x = Math.sin(dLon) * Math.cos(lat2);
+      const y = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+      return (Math.atan2(x, y) * 180 / Math.PI + 360) % 360;
+    }
+
+    function getBestHeading(gpsHeading, lat, lng) {
+      // Priority: GPS heading > compass > movement calculation
+      if (gpsHeading != null && gpsHeading !== 0) return gpsHeading;
+      if (compassHeading != null) return compassHeading;
+      return calcHeadingFromMovement(lat, lng);
+    }
+
+    function updateArrowRotation() {
+      if (!state.userMarker || compassHeading == null) return;
+      const icon = state.userMarker.getIcon();
+      if (icon) {
+        icon.rotation = compassHeading;
+        state.userMarker.setIcon(icon);
+      }
+    }
+
+
     // ─── Driving Mode ──────────────────────────────────────────────
 
     async function startDriving() {
@@ -1144,6 +1317,9 @@
 
       // Build turn-by-turn steps
       state.routeSteps = buildRouteSteps();
+
+      // Start compass tracking
+      startCompass();
 
       state.driving = true;
       state.lastAnnouncementTime = 0;
@@ -1187,6 +1363,7 @@
 
     function stopDriving() {
       state.driving = false;
+      stopCompass();
       if (state.watchId !== null) {
         navigator.geolocation.clearWatch(state.watchId);
         state.watchId = null;
@@ -1216,13 +1393,15 @@
     function onPositionUpdate(position) {
       const lat     = position.coords.latitude;
       const lng     = position.coords.longitude;
-      const heading = position.coords.heading;
+      const gpsHead = position.coords.heading;
       const speed   = position.coords.speed;
+
+      // Best heading: GPS > compass > calculated from movement
+      const heading = getBestHeading(gpsHead, lat, lng);
 
       const arrowPath = 'M 0,-12 L 7,8 L 0,3 L -7,8 Z';
 
       if (!state.userMarker) {
-        // Blue glow circle behind the arrow
         state.userGlow = new google.maps.Marker({
           position: { lat, lng },
           map,
@@ -1255,7 +1434,7 @@
         if (state.userGlow) state.userGlow.setPosition({ lat, lng });
 
         const icon = state.userMarker.getIcon();
-        icon.rotation = heading || icon.rotation || 0;
+        icon.rotation = heading != null ? heading : (icon.rotation || 0);
         state.userMarker.setIcon(icon);
       }
 
