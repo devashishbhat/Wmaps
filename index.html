@@ -427,12 +427,13 @@
 
 
   <!-- ===================== JAVASCRIPT ===================== -->
+  <script src="config.js"></script>
   <script>
-    // ─── Configuration ─────────────────────────────────────────────
-    const CONFIG = {
-      ANTHROPIC_API_KEY: 'YOUR_ANTHROPIC_API_KEY',
-      GOOGLE_MAPS_KEY:   'YOUR_GOOGLE_MAPS_API_KEY',
-    };
+    // CONFIG is loaded from config.js (kept out of git)
+    if (typeof CONFIG === 'undefined') {
+      var CONFIG = { ANTHROPIC_API_KEY: 'YOUR_ANTHROPIC_API_KEY', GOOGLE_MAPS_KEY: 'YOUR_GOOGLE_MAPS_API_KEY' };
+      console.warn('Wmaps: config.js not found. Create it with your API keys.');
+    }
 
     // ─── State ─────────────────────────────────────────────────────
     const state = {
