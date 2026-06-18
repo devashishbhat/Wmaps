@@ -16,15 +16,17 @@ A driving companion web app that discovers and announces hidden stories along yo
 
 | Layer | Technology |
 |-------|-----------|
+| Architecture | Vanilla JavaScript ES modules (no framework, no bundler) |
 | Map & Routing | Google Maps JavaScript API, Directions API |
 | Place Discovery | Google Places API (Nearby Search) |
 | AI Stories | Anthropic Claude API (`claude-sonnet-4-6`) |
 | Voice | Web Speech API (built into browser) |
 | Location | Browser Geolocation API + DeviceOrientation |
-| Styling | Tailwind CSS (CDN) |
+| Styling | Tailwind CSS (CDN) + custom stylesheet |
 | Fonts | DM Serif Display + Inter (Google Fonts) |
 
-**No backend. No build step. Single HTML file.**
+**No backend. No build step.** The frontend is organised as a small graph of
+ES modules, each with a single responsibility — see [Project Structure](#project-structure).
 
 ---
 
@@ -66,16 +68,22 @@ cd Wmaps
 
 ### Step 4 — Add your API keys
 
-Create a file called `config.js` in the project root:
+Copy the example config and fill in your keys:
+
+```bash
+cp config.example.js config.js
+```
+
+Then edit `config.js`:
 
 ```js
-var CONFIG = {
+window.CONFIG = {
   GOOGLE_MAPS_KEY: 'your-google-maps-api-key-here',
   ANTHROPIC_API_KEY: 'your-anthropic-api-key-here',
 };
 ```
 
-This file is listed in `.gitignore` and will not be committed to git.
+`config.js` is listed in `.gitignore` and will never be committed to git.
 
 ### Step 5 — Start the dev server
 
@@ -100,13 +108,29 @@ The app will be available at **http://localhost:3000**
 
 ```
 Wmaps/
-├── index.html     ← entire app (single file)
-├── config.js      ← your API keys (gitignored)
-├── serve.mjs      ← local dev server
-├── deck.html      ← pitch deck / presentation
-├── .gitignore     ← keeps config.js out of git
-└── WMAPS_PRD.md   ← product requirements document
+├── index.html            ← markup only (screens, cards, overlays)
+├── config.example.js     ← template for your API keys
+├── config.js             ← your real keys (git-ignored)
+├── serve.mjs             ← zero-dependency local dev server
+├── deck.html             ← pitch deck / presentation
+├── css/
+│   └── styles.css        ← animations, theming, third-party overrides
+└── js/
+    ├── app.js            ← entry point: bootstrapping + event wiring
+    ├── tailwind.config.js← Tailwind CDN runtime theme
+    ├── constants.js      ← explore modes, tones, map theme, tunables
+    ├── state.js          ← centralised app state + Maps object refs
+    ├── utils.js          ← geospatial math + formatting helpers
+    ├── ui.js             ← screens, toasts, overlays, speech
+    ├── claude.js         ← Anthropic API (hooks + on-demand stories)
+    ├── route.js          ← autocomplete, directions, turn-by-turn nav
+    ├── poi.js            ← discovery, scoring, markers, mode selector
+    ├── poiCard.js        ← announcement card + "Tell me more"
+    └── driving.js        ← compass, GPS tracking, proximity triggers
 ```
+
+Each module has one clear responsibility and communicates through the shared
+`state`/`refs` objects in `state.js`, keeping the code easy to navigate and test.
 
 ## Presentation
 
