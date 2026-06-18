@@ -13,8 +13,9 @@ tailwind.config = {
         burnt:    { DEFAULT: '#e65100' },
       },
       fontFamily: {
-        display: ['"DM Serif Display"', 'Georgia', 'serif'],
+        display: ['Fraunces', 'Georgia', 'serif'],
         body:    ['Inter', 'system-ui', 'sans-serif'],
+        mono:    ['"Space Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },
       spacing: {
         18: '4.5rem',

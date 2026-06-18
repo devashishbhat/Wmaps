@@ -13,6 +13,14 @@ body {
   font-family: 'Inter', system-ui, sans-serif;
 }
 
+/* Fraunces is a variable face; let it size its detail to the type and give
+   the display roles a consistent travelogue weight. */
+.font-display {
+  font-optical-sizing: auto;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
 /* ---- Grain overlay for depth ---- */
 .grain::after {
   content: '';
@@ -24,18 +32,68 @@ body {
   z-index: 9999;
 }
 
-/* ---- Animated aurora backdrop on the landing hero ---- */
+/* ---- Landing backdrop: the warm "horizon ahead" you're driving toward ---- */
 .aurora {
   background:
-    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(245, 166, 35, 0.10) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 80% at 20% 100%, rgba(122, 158, 126, 0.07) 0%, transparent 50%),
-    radial-gradient(ellipse 50% 50% at 80% 80%, rgba(194, 24, 91, 0.05) 0%, transparent 50%);
-  animation: auroraShift 18s ease-in-out infinite alternate;
+    radial-gradient(120% 70% at 50% 118%, rgba(245, 166, 35, 0.13) 0%, transparent 55%),
+    radial-gradient(90% 60% at 50% -12%, rgba(122, 158, 126, 0.06) 0%, transparent 60%);
+  animation: auroraShift 24s ease-in-out infinite alternate;
 }
 
 @keyframes auroraShift {
   0%   { transform: translate3d(0, 0, 0) scale(1); }
-  100% { transform: translate3d(0, -2%, 0) scale(1.08); }
+  100% { transform: translate3d(0, -1.5%, 0) scale(1.05); }
+}
+
+/* ---- Cartographic contour lines: quiet terrain under the hero ---- */
+.contour {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  color: #f5a623;
+  opacity: 0.06;
+  pointer-events: none;
+  animation: contourDrift 26s ease-in-out infinite alternate;
+}
+
+@keyframes contourDrift {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-26px); }
+}
+
+/* ---- Signature: the route line joining origin → destination in the form ---- */
+.route-line {
+  position: absolute;
+  left: 20px;            /* aligns with the centre of the origin/destination dots */
+  top: 1.5rem;
+  height: 3.75rem;
+  width: 2px;
+  border-radius: 2px;
+  background: linear-gradient(to bottom, #7a9e7e, #f5a623);
+  opacity: 0.7;
+}
+
+/* A traveller pulse easing from start toward the destination. */
+.route-line::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  transform: translateX(-50%);
+  background: #f7b84a;
+  box-shadow: 0 0 10px rgba(245, 166, 35, 0.85);
+  animation: routeTravel 3.4s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+}
+
+@keyframes routeTravel {
+  0%   { top: -2px; opacity: 0; }
+  12%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { top: calc(100% - 4px); opacity: 0; }
 }
 
 /* ---- Google Places Autocomplete theming ---- */

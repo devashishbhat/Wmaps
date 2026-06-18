@@ -1,8 +1,9 @@
 # Local API keys
 config.js
 
-# Internal product docs
+# Internal product / tooling docs
 WMAPS_PRD.md
+SKILL.md
 
 # OS / editor cruft
 .DS_Store
